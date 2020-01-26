@@ -5,7 +5,8 @@ RUN apt-get update && apt-get install --assume-yes \
     wget \
     build-essential \
     zlib1g-dev \
-    libssl-dev
+    libssl-dev \
+    libpcre3-dev
 
 # Download and extract the nginx source code
 RUN wget "https://nginx.org/download/nginx-1.16.1.tar.gz" --output-document=- | \
@@ -13,12 +14,13 @@ RUN wget "https://nginx.org/download/nginx-1.16.1.tar.gz" --output-document=- | 
 
 WORKDIR /nginx-1.16.1
 
-# Compile and install nginx
+# Compile and install nginx (dynamically linked)
 RUN ./configure \
     --http-log-path=/dev/stdout \
     --error-log-path=/dev/stderr \
     --with-http_ssl_module \
     --with-http_v2_module \
+    --with-pcre \
     --without-http_ssi_module \
     --without-http_userid_module \
     --without-http_access_module \
@@ -87,6 +89,8 @@ RUN cp --archive \
         /lib/x86_64-linux-gnu/libc-2.28.so \
         /lib/x86_64-linux-gnu/libdl.so.2 \
         /lib/x86_64-linux-gnu/libdl-2.28.so \
+        /lib/x86_64-linux-gnu/libpcre.so.3 \
+        /lib/x86_64-linux-gnu/libpcre.so.3.13.3 \
         /lib/x86_64-linux-gnu/libpthread.so.0 \
         /lib/x86_64-linux-gnu/libpthread-2.28.so \
         /lib/x86_64-linux-gnu/libz.so.1 \
@@ -98,7 +102,8 @@ RUN cp --archive \
         /build/usr/lib/x86_64-linux-gnu/
 
 # Copy nginx binary and configuration files
-RUN cp --archive /usr/local/nginx /build/usr/local/nginx
+RUN cp --archive /usr/local/nginx /build/usr/local/
+COPY nginx.conf /build/usr/local/nginx/conf/nginx.conf
 
 FROM scratch
 
