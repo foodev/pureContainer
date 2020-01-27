@@ -53,13 +53,24 @@ RUN cp --archive \
         /lib/x86_64-linux-gnu/libnss_files-2.28.so \
         /build/lib/x86_64-linux-gnu/
 
-# Copy all dynamically linked libraries for PHP
 RUN cp --archive \
         /lib64/ld-linux-x86-64.so.2 \
         /build/lib64/ && \
     cp --archive \
-        /lib/x86_64-linux-gnu/* \
+        /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 \
+        /lib/x86_64-linux-gnu/ld-2.28.so \
         /build/lib/x86_64-linux-gnu/
+
+# Copy all dynamically linked libraries for PHP-FPM
+RUN for library in $(ldd /usr/local/php/sbin/php-fpm | grep '=> ' | awk '{print $3}'); do \
+        mkdir --parents "/build$(dirname $library)"; \
+        cp --archive $library "/build$(dirname $library)"; \
+        \
+        if [ -L $library ]; then \
+            mkdir --parents "/build$(dirname `realpath $library`)"; \
+            cp --archive $(realpath $library) "/build$(dirname `realpath $library`)"; \
+        fi \
+    done
 
 # Copy PHP binary and configuration files
 RUN cp --archive /usr/local/php /build/usr/local/ && \
@@ -71,8 +82,6 @@ COPY info.php /build/scripts/info.php
 FROM scratch
 
 COPY --from=0 /build /
-
-WORKDIR /scripts
 
 EXPOSE 9000
 

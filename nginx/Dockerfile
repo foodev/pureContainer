@@ -78,28 +78,24 @@ RUN cp --archive \
         /lib/x86_64-linux-gnu/libnss_files-2.28.so \
         /build/lib/x86_64-linux-gnu/
 
-# Copy all dynamically linked libraries for nginx
 RUN cp --archive \
         /lib64/ld-linux-x86-64.so.2 \
         /build/lib64/ && \
     cp --archive \
         /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 \
         /lib/x86_64-linux-gnu/ld-2.28.so \
-        /lib/x86_64-linux-gnu/libc.so.6 \
-        /lib/x86_64-linux-gnu/libc-2.28.so \
-        /lib/x86_64-linux-gnu/libdl.so.2 \
-        /lib/x86_64-linux-gnu/libdl-2.28.so \
-        /lib/x86_64-linux-gnu/libpcre.so.3 \
-        /lib/x86_64-linux-gnu/libpcre.so.3.13.3 \
-        /lib/x86_64-linux-gnu/libpthread.so.0 \
-        /lib/x86_64-linux-gnu/libpthread-2.28.so \
-        /lib/x86_64-linux-gnu/libz.so.1 \
-        /lib/x86_64-linux-gnu/libz.so.1.2.11 \
-        /build/lib/x86_64-linux-gnu/ && \
-    cp --archive \
-        /usr/lib/x86_64-linux-gnu/libssl.so.1.1 \
-        /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1 \
-        /build/usr/lib/x86_64-linux-gnu/
+        /build/lib/x86_64-linux-gnu/
+
+# Copy all dynamically linked libraries for nginx
+RUN for library in $(ldd /usr/local/nginx/sbin/nginx | grep '=> ' | awk '{print $3}'); do \
+        mkdir --parents "/build$(dirname $library)"; \
+        cp --archive $library "/build$(dirname $library)"; \
+        \
+        if [ -L $library ]; then \
+            mkdir --parents "/build$(dirname `realpath $library`)"; \
+            cp --archive $(realpath $library) "/build$(dirname `realpath $library`)"; \
+        fi \
+    done
 
 # Copy nginx binary and configuration files
 RUN cp --archive /usr/local/nginx /build/usr/local/
