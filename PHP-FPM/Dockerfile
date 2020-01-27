@@ -29,7 +29,6 @@ RUN make install
 # Create necessary folders for the build
 RUN mkdir --parents \
     /build/etc \
-    /build/lib64 \
     /build/lib/x86_64-linux-gnu \
     /build/usr/local \
     /build/tmp
@@ -53,16 +52,8 @@ RUN cp --archive \
         /lib/x86_64-linux-gnu/libnss_files-2.28.so \
         /build/lib/x86_64-linux-gnu/
 
-RUN cp --archive \
-        /lib64/ld-linux-x86-64.so.2 \
-        /build/lib64/ && \
-    cp --archive \
-        /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 \
-        /lib/x86_64-linux-gnu/ld-2.28.so \
-        /build/lib/x86_64-linux-gnu/
-
 # Copy all dynamically linked libraries for PHP-FPM
-RUN for library in $(ldd /usr/local/php/sbin/php-fpm | grep '=> ' | awk '{print $3}'); do \
+RUN for library in $(ldd /usr/local/php/sbin/php-fpm | grep '=> ' | awk '{print $3}') "/lib64/ld-linux-x86-64.so.2"; do \
         mkdir --parents "/build$(dirname $library)"; \
         cp --archive $library "/build$(dirname $library)"; \
         \

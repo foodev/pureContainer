@@ -52,10 +52,8 @@ RUN make install
 # Create necessary folders for the build
 RUN mkdir --parents \
     /build/etc \
-    /build/lib64 \
     /build/lib/x86_64-linux-gnu \
-    /build/usr/local \
-    /build/usr/lib/x86_64-linux-gnu
+    /build/usr/local
 
 # Delete all users except "root" and "nobody"
 RUN for user in $(awk -F':' '{print $1}' /etc/passwd | egrep -v 'root|nobody'); do \
@@ -78,16 +76,8 @@ RUN cp --archive \
         /lib/x86_64-linux-gnu/libnss_files-2.28.so \
         /build/lib/x86_64-linux-gnu/
 
-RUN cp --archive \
-        /lib64/ld-linux-x86-64.so.2 \
-        /build/lib64/ && \
-    cp --archive \
-        /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 \
-        /lib/x86_64-linux-gnu/ld-2.28.so \
-        /build/lib/x86_64-linux-gnu/
-
 # Copy all dynamically linked libraries for nginx
-RUN for library in $(ldd /usr/local/nginx/sbin/nginx | grep '=> ' | awk '{print $3}'); do \
+RUN for library in $(ldd /usr/local/nginx/sbin/nginx | grep '=> ' | awk '{print $3}') "/lib64/ld-linux-x86-64.so.2"; do \
         mkdir --parents "/build$(dirname $library)"; \
         cp --archive $library "/build$(dirname $library)"; \
         \
