@@ -34,12 +34,12 @@ RUN mkdir --parents \
     /build/tmp
 
 # Delete all users except "root" and "nobody"
-RUN for user in $(awk -F':' '{print $1}' /etc/passwd | egrep -v 'root|nobody'); do \
+RUN for user in $(awk --field-separator=':' '{print $1}' /etc/passwd | egrep --invert-match 'root|nobody'); do \
         userdel $user; \
     done
 
 # Delete all groups except "root" and "nogroup"
-RUN for group in $(awk -F':' '{print $1}' /etc/group | egrep -v 'root|nogroup'); do \
+RUN for group in $(awk --field-separator=':' '{print $1}' /etc/group | egrep --invert-match 'root|nogroup'); do \
         groupdel $group; \
     done
 
