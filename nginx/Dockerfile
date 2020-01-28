@@ -88,7 +88,8 @@ RUN for library in $(ldd /usr/local/nginx/sbin/nginx | grep '=> ' | awk '{print 
     done
 
 # Copy nginx binary and configuration files
-RUN cp --archive /usr/local/nginx /build/usr/local/
+RUN cp --archive /usr/local/nginx /build/usr/local/ && \
+    rm --force --recursive /build/usr/local/nginx/conf
 COPY nginx.conf mime.types /build/usr/local/nginx/conf/
 
 FROM scratch
