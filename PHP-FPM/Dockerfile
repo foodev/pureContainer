@@ -43,17 +43,13 @@ RUN for group in $(awk --field-separator=':' '{print $1}' /etc/group | egrep --i
         groupdel $group; \
     done
 
-RUN cp --archive \
-        /etc/passwd \
-        /etc/group \
-        /build/etc/ && \
-    cp --archive \
-        /lib/x86_64-linux-gnu/libnss_files.so.2 \
-        /lib/x86_64-linux-gnu/libnss_files-2.28.so \
-        /build/lib/x86_64-linux-gnu/
+RUN cp --archive /etc/passwd /etc/group /build/etc/
 
 # Copy all dynamically linked libraries for PHP-FPM
-RUN for library in $(ldd /usr/local/php/sbin/php-fpm | grep '=> ' | awk '{print $3}') "/lib64/ld-linux-x86-64.so.2"; do \
+RUN for library in $(ldd /usr/local/php/sbin/php-fpm | grep '=> ' | awk '{print $3}') \
+        "/lib64/ld-linux-x86-64.so.2" \
+        "/lib/x86_64-linux-gnu/libnss_files.so.2"; \
+    do \
         mkdir --parents "/build$(dirname $library)"; \
         cp --archive $library "/build$(dirname $library)"; \
         \
@@ -65,8 +61,8 @@ RUN for library in $(ldd /usr/local/php/sbin/php-fpm | grep '=> ' | awk '{print 
 
 # Copy PHP binary and configuration files
 RUN cp --archive /usr/local/php /build/usr/local/ && \
-    cp --archive /php-7.4.2/php.ini-development /build/usr/local/php/php.ini && \
-    mv /build/usr/local/php/etc/php-fpm.conf.default /build/usr/local/php/etc/php-fpm.conf
+    cp --archive /php-7.4.2/php.ini-development /build/usr/local/php/php.ini
+COPY php-fpm.conf /build/usr/local/php/etc/php-fpm.conf
 COPY www.conf /build/usr/local/php/etc/php-fpm.d/www.conf
 COPY info.php /build/scripts/info.php
 

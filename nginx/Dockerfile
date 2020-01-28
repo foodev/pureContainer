@@ -16,8 +16,6 @@ WORKDIR /nginx-1.16.1
 
 # Compile and install nginx (dynamically linked)
 RUN ./configure \
-    --http-log-path=/dev/stdout \
-    --error-log-path=/dev/stderr \
     --with-http_ssl_module \
     --with-http_v2_module \
     --with-pcre \
@@ -52,32 +50,25 @@ RUN make install
 # Create necessary folders for the build
 RUN mkdir --parents \
     /build/etc \
-    /build/lib/x86_64-linux-gnu \
     /build/usr/local
 
 # Delete all users except "root" and "nobody"
-RUN for user in $(awk --field-separator=':' '{print $1}' /etc/passwd | egrep --invert-match 'root|nobody'); do \
+RUN for user in $(awk -F':' '{print $1}' /etc/passwd | egrep --invert-match 'root|nobody'); do \
         userdel $user; \
     done
 
 # Delete all groups except "root" and "nogroup"
-RUN for group in $(awk --field-separator=':' '{print $1}' /etc/group | egrep --invert-match 'root|nogroup'); do \
+RUN for group in $(awk -F':' '{print $1}' /etc/group | egrep --invert-match 'root|nogroup'); do \
         groupdel $group; \
     done
 
-# If we don't include these, we get an error:
-# nginx: [emerg] getpwnam("nobody") failed (2: No such file or directory)
-RUN cp --archive \
-        /etc/passwd \
-        /etc/group \
-        /build/etc/ && \
-    cp --archive \
-        /lib/x86_64-linux-gnu/libnss_files.so.2 \
-        /lib/x86_64-linux-gnu/libnss_files-2.28.so \
-        /build/lib/x86_64-linux-gnu/
+RUN cp --archive /etc/passwd /etc/group /build/etc/
 
 # Copy all dynamically linked libraries for nginx
-RUN for library in $(ldd /usr/local/nginx/sbin/nginx | grep '=> ' | awk '{print $3}') "/lib64/ld-linux-x86-64.so.2"; do \
+RUN for library in $(ldd /usr/local/nginx/sbin/nginx | grep '=> ' | awk '{print $3}') \
+        "/lib64/ld-linux-x86-64.so.2" \
+        "/lib/x86_64-linux-gnu/libnss_files.so.2"; \
+    do \
         mkdir --parents "/build$(dirname $library)"; \
         cp --archive $library "/build$(dirname $library)"; \
         \
