@@ -61,9 +61,10 @@ RUN for library in $(ldd /usr/local/php/sbin/php-fpm | grep '=> ' | awk '{print 
 
 # Copy PHP binary and configuration files
 RUN cp --archive /usr/local/php /build/usr/local/ && \
-    cp --archive /php-7.4.2/php.ini-development /build/usr/local/php/php.ini
-COPY php-fpm.conf /build/usr/local/php/etc/php-fpm.conf
-COPY www.conf /build/usr/local/php/etc/php-fpm.d/www.conf
+    cp --archive /php-7.4.2/php.ini-development /build/usr/local/php/php.ini && \
+    rm --force --recursive /build/usr/local/php/etc
+COPY php-fpm.conf /build/usr/local/php/etc/
+COPY php-fpm.d /build/usr/local/php/etc/php-fpm.d
 COPY info.php /build/scripts/info.php
 
 FROM scratch
