@@ -1,4 +1,4 @@
-FROM debian:stable
+FROM debian:10
 
 # Install dependencies
 RUN apt-get update && apt-get install --assume-yes \
@@ -29,17 +29,15 @@ RUN make install
 # Create necessary folders for the build
 RUN mkdir --parents \
     /build/etc \
-    /build/lib/x86_64-linux-gnu \
-    /build/usr/local \
-    /build/tmp
+    /build/usr/local
 
 # Delete all users except "root" and "nobody"
-RUN for user in $(awk --field-separator=':' '{print $1}' /etc/passwd | egrep --invert-match 'root|nobody'); do \
+RUN for user in $(awk -F':' '{print $1}' /etc/passwd | egrep --invert-match 'root|nobody'); do \
         userdel $user; \
     done
 
 # Delete all groups except "root" and "nogroup"
-RUN for group in $(awk --field-separator=':' '{print $1}' /etc/group | egrep --invert-match 'root|nogroup'); do \
+RUN for group in $(awk -F':' '{print $1}' /etc/group | egrep --invert-match 'root|nogroup'); do \
         groupdel $group; \
     done
 
@@ -48,6 +46,7 @@ RUN cp --archive /etc/passwd /etc/group /build/etc/
 # Copy all dynamically linked libraries for PHP-FPM
 RUN for library in $(ldd /usr/local/php/sbin/php-fpm | grep '=> ' | awk '{print $3}') \
         "/lib64/ld-linux-x86-64.so.2" \
+        # Needed to run PHP-FPM as different user
         "/lib/x86_64-linux-gnu/libnss_files.so.2"; \
     do \
         mkdir --parents "/build$(dirname $library)"; \
@@ -63,8 +62,10 @@ RUN for library in $(ldd /usr/local/php/sbin/php-fpm | grep '=> ' | awk '{print 
 RUN cp --archive /usr/local/php /build/usr/local/ && \
     cp --archive /php-7.4.2/php.ini-development /build/usr/local/php/php.ini && \
     rm --force --recursive /build/usr/local/php/etc
-COPY php-fpm.conf /build/usr/local/php/etc/
-COPY php-fpm.d /build/usr/local/php/etc/php-fpm.d
+COPY resources/php-fpm.conf /build/usr/local/php/etc/php-fpm.conf
+COPY resources/php-fpm.d /build/usr/local/php/etc/php-fpm.d
+
+# Copy the actual PHP source code
 COPY info.php /build/scripts/info.php
 
 FROM scratch

@@ -1,4 +1,4 @@
-FROM debian:stable
+FROM debian:10
 
 # Install dependencies
 RUN apt-get update && apt-get install --assume-yes \
@@ -16,6 +16,8 @@ WORKDIR /nginx-1.16.1
 
 # Compile and install nginx (dynamically linked)
 RUN ./configure \
+    --http-log-path=/dev/stdout \
+    --error-log-path=/dev/stderr \
     --with-http_ssl_module \
     --with-http_v2_module \
     --with-pcre \
@@ -67,7 +69,11 @@ RUN cp --archive /etc/passwd /etc/group /build/etc/
 # Copy all dynamically linked libraries for nginx
 RUN for library in $(ldd /usr/local/nginx/sbin/nginx | grep '=> ' | awk '{print $3}') \
         "/lib64/ld-linux-x86-64.so.2" \
-        "/lib/x86_64-linux-gnu/libnss_files.so.2"; \
+        # Needed to run nginx as different user
+        "/lib/x86_64-linux-gnu/libnss_files.so.2" \
+        # Needed to resolve the hostname for FastCGI
+        "/lib/x86_64-linux-gnu/libresolv.so.2" \
+        "/lib/x86_64-linux-gnu/libnss_dns.so.2"; \
     do \
         mkdir --parents "/build$(dirname $library)"; \
         cp --archive $library "/build$(dirname $library)"; \
@@ -81,7 +87,7 @@ RUN for library in $(ldd /usr/local/nginx/sbin/nginx | grep '=> ' | awk '{print 
 # Copy nginx binary and configuration files
 RUN cp --archive /usr/local/nginx /build/usr/local/ && \
     rm --force --recursive /build/usr/local/nginx/conf
-COPY nginx.conf mime.types /build/usr/local/nginx/conf/
+COPY resources/nginx.conf resources/mime.types /build/usr/local/nginx/conf/
 
 FROM scratch
 

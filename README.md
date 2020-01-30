@@ -9,5 +9,5 @@ PHP-FPM
 
 nginx
 ```
-# docker run --rm --publish 80:80 nginx:1.16.1
+# docker run --rm --publish 80:80 --name nginx --network foodev nginx:1.16.1
 ```
