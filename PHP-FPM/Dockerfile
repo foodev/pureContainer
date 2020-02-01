@@ -60,13 +60,13 @@ RUN for library in $(ldd /usr/local/php/sbin/php-fpm | grep '=> ' | awk '{print 
 
 # Copy PHP binary and configuration files
 RUN cp --archive /usr/local/php /build/usr/local/ && \
-    cp --archive /php-7.4.2/php.ini-development /build/usr/local/php/php.ini && \
     rm --force --recursive /build/usr/local/php/etc
+COPY resources/php.ini /build/usr/local/php/php.ini
 COPY resources/php-fpm.conf /build/usr/local/php/etc/php-fpm.conf
 COPY resources/php-fpm.d /build/usr/local/php/etc/php-fpm.d
 
 # Copy the actual PHP source code
-COPY info.php /build/scripts/info.php
+COPY . /build/scripts/
 
 FROM scratch
 
