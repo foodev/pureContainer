@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install --assume-yes \
     libpcre3-dev
 
 # Download and extract the nginx source code
+# https://nginx.org/en/docs/configure.html
 RUN wget "https://nginx.org/download/nginx-1.16.1.tar.gz" --output-document=- | \
     tar --extract --gzip --file=- --directory /
 
@@ -31,7 +32,6 @@ RUN ./configure \
     --without-http_map_module \
     --without-http_split_clients_module \
     --without-http_referer_module \
-    --without-http_rewrite_module \
     --without-http_proxy_module \
     --without-http_uwsgi_module \
     --without-http_scgi_module \
@@ -47,12 +47,12 @@ RUN ./configure \
     --without-http_upstream_keepalive_module \
     --without-http_upstream_zone_module
 RUN make
-RUN make install
 
 # Create necessary folders for the build
 RUN mkdir --parents \
     /build/etc \
-    /build/usr/local
+    /build/usr/local/nginx/sbin \
+    /build/usr/local/nginx/logs
 
 # Delete all users except "root" and "nobody"
 RUN for user in $(awk -F':' '{print $1}' /etc/passwd | egrep --invert-match 'root|nobody'); do \
@@ -67,7 +67,7 @@ RUN for group in $(awk -F':' '{print $1}' /etc/group | egrep --invert-match 'roo
 RUN cp --archive /etc/passwd /etc/group /build/etc/
 
 # Copy all dynamically linked libraries for nginx
-RUN for library in $(ldd /usr/local/nginx/sbin/nginx | grep '=> ' | awk '{print $3}') \
+RUN for library in $(ldd /nginx-1.16.1/objs/nginx | grep '=> ' | awk '{print $3}') \
         "/lib64/ld-linux-x86-64.so.2" \
         # Needed to run nginx as different user
         "/lib/x86_64-linux-gnu/libnss_files.so.2" \
@@ -85,9 +85,12 @@ RUN for library in $(ldd /usr/local/nginx/sbin/nginx | grep '=> ' | awk '{print 
     done
 
 # Copy nginx binary and configuration files
-RUN cp --archive /usr/local/nginx /build/usr/local/ && \
-    rm --force --recursive /build/usr/local/nginx/conf
-COPY resources/nginx.conf resources/mime.types /build/usr/local/nginx/conf/
+RUN cp --archive /nginx-1.16.1/objs/nginx /build/usr/local/nginx/sbin/nginx
+COPY resources/nginx.conf \
+    resources/mime.types \
+    resources/cert.pem \
+    resources/cert.key \
+    /build/usr/local/nginx/conf/
 
 FROM scratch
 
@@ -95,6 +98,6 @@ COPY --from=0 /build /
 
 WORKDIR /usr/local/nginx/html
 
-EXPOSE 80
+EXPOSE 80 443
 
-CMD [ "/usr/local/nginx/sbin/nginx", "-g", "daemon off;"]
+CMD [ "/usr/local/nginx/sbin/nginx", "-g", "daemon off;" ]
