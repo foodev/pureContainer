@@ -1,4 +1,6 @@
-FROM debian:10
+FROM debian:10.2
+
+ARG PHP_VERSION=7.4.2
 
 # Install dependencies
 RUN apt-get update && apt-get install --assume-yes \
@@ -8,14 +10,13 @@ RUN apt-get update && apt-get install --assume-yes \
     pkg-config
 
 # Download and extract the PHP source code
-RUN wget "https://www.php.net/distributions/php-7.4.2.tar.xz" --output-document=- | \
+RUN wget "https://www.php.net/distributions/php-$PHP_VERSION.tar.xz" --output-document=- | \
     tar --extract --xz --file=- --directory /
 
-WORKDIR /php-7.4.2
+WORKDIR /php-$PHP_VERSION
 
-# Compile and install PHP
+# Compile PHP (dynamically linked)
 RUN ./configure \
-    --prefix=/usr/local/php \
     --disable-all \
     --disable-cgi \
     --disable-cli \
@@ -24,12 +25,11 @@ RUN ./configure \
     --with-fpm-user=nobody \
     --with-fpm-group=nogroup
 RUN make
-RUN make install
 
 # Create necessary folders for the build
 RUN mkdir --parents \
-    /build/etc \
-    /build/usr/local
+    /build/bin \
+    /build/etc/php
 
 # Delete all users except "root" and "nobody"
 RUN for user in $(awk -F':' '{print $1}' /etc/passwd | egrep --invert-match 'root|nobody'); do \
@@ -44,7 +44,7 @@ RUN for group in $(awk -F':' '{print $1}' /etc/group | egrep --invert-match 'roo
 RUN cp --archive /etc/passwd /etc/group /build/etc/
 
 # Copy all dynamically linked libraries for PHP-FPM
-RUN for library in $(ldd /usr/local/php/sbin/php-fpm | grep '=> ' | awk '{print $3}') \
+RUN for library in $(ldd /php-$PHP_VERSION/sapi/fpm/php-fpm | grep '=> ' | awk '{print $3}') \
         "/lib64/ld-linux-x86-64.so.2" \
         # Needed to run PHP-FPM as different user
         "/lib/x86_64-linux-gnu/libnss_files.so.2"; \
@@ -59,19 +59,19 @@ RUN for library in $(ldd /usr/local/php/sbin/php-fpm | grep '=> ' | awk '{print 
     done
 
 # Copy PHP binary and configuration files
-RUN cp --archive /usr/local/php /build/usr/local/ && \
-    rm --force --recursive /build/usr/local/php/etc
-COPY resources/php.ini /build/usr/local/php/php.ini
-COPY resources/php-fpm.conf /build/usr/local/php/etc/php-fpm.conf
-COPY resources/php-fpm.d /build/usr/local/php/etc/php-fpm.d
+RUN cp --archive /php-$PHP_VERSION/sapi/fpm/php-fpm /build/bin/php-fpm
+COPY resources /build/etc/php/
 
 # Copy the actual PHP source code
-COPY . /build/scripts/
+COPY --chown=nobody:nogroup . /build/scripts/
 
+# Everything below this line will be the actual content of the image
 FROM scratch
 
 COPY --from=0 /build /
 
+USER nobody:nogroup
+
 EXPOSE 9000
 
-CMD [ "/usr/local/php/sbin/php-fpm", "--nodaemonize" ]
+CMD [ "/bin/php-fpm", "--nodaemonize", "-c", "/etc/php/php.ini", "--fpm-config", "/etc/php/php-fpm.conf" ]
