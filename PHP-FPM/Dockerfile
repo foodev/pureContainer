@@ -74,4 +74,4 @@ USER nobody:nogroup
 
 EXPOSE 9000
 
-CMD [ "/bin/php-fpm", "--nodaemonize", "-c", "/etc/php/php.ini", "--fpm-config", "/etc/php/php-fpm.conf" ]
+ENTRYPOINT [ "/bin/php-fpm", "--nodaemonize", "-c", "/etc/php/php.ini", "--fpm-config", "/etc/php/php-fpm.conf" ]
