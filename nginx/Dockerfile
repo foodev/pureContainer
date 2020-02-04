@@ -1,4 +1,4 @@
-FROM debian:10
+FROM debian:10.2
 
 # Install dependencies
 RUN apt-get update && apt-get install --assume-yes \
@@ -16,9 +16,17 @@ RUN wget "https://nginx.org/download/nginx-1.16.1.tar.gz" --output-document=- | 
 WORKDIR /nginx-1.16.1
 
 # Compile and install nginx (dynamically linked)
+# https://nginx.org/en/docs/configure.html
 RUN ./configure \
+    --conf-path=/etc/nginx/nginx.conf \
+    --sbin-path=/bin/nginx \
+    --pid-path=/dev/null \
+    --http-client-body-temp-path=/tmp/client_body_temp \
+    --http-fastcgi-temp-path=/tmp/fastcgi_temp \
     --http-log-path=/dev/stdout \
     --error-log-path=/dev/stderr \
+    --user=nobody \
+    --group=nogroup \
     --with-http_ssl_module \
     --with-http_v2_module \
     --with-pcre \
@@ -50,9 +58,10 @@ RUN make
 
 # Create necessary folders for the build
 RUN mkdir --parents \
-    /build/etc \
-    /build/usr/local/nginx/sbin \
-    /build/usr/local/nginx/logs
+    /build/bin \
+    /build/etc/nginx \
+    /build/tmp/client_body_temp \
+    /build/tmp/fastcgi_temp
 
 # Delete all users except "root" and "nobody"
 RUN for user in $(awk -F':' '{print $1}' /etc/passwd | egrep --invert-match 'root|nobody'); do \
@@ -85,19 +94,24 @@ RUN for library in $(ldd /nginx-1.16.1/objs/nginx | grep '=> ' | awk '{print $3}
     done
 
 # Copy nginx binary and configuration files
-RUN cp --archive /nginx-1.16.1/objs/nginx /build/usr/local/nginx/sbin/nginx
-COPY resources/nginx.conf \
-    resources/mime.types \
-    resources/cert.pem \
-    resources/cert.key \
-    /build/usr/local/nginx/conf/
+RUN cp --archive /nginx-1.16.1/objs/nginx /build/bin/nginx
+COPY resources /build/etc/nginx/
+
+# Set correct permissions since nginx will run as user nobody:nogroup
+RUN chown --recursive nobody:nogroup \
+    /build/etc/nginx \
+    /build/tmp/client_body_temp \
+    /build/tmp/fastcgi_temp
 
 FROM scratch
 
+# Everything below this line will be the actual content of the image
 COPY --from=0 /build /
 
-WORKDIR /usr/local/nginx/html
+USER nobody:nogroup
 
-EXPOSE 80 443
+WORKDIR /srv/http
 
-CMD [ "/usr/local/nginx/sbin/nginx", "-g", "daemon off;" ]
+EXPOSE 8080 44300
+
+ENTRYPOINT [ "/bin/nginx", "-g", "daemon off;" ]
