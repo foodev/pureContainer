@@ -1,5 +1,7 @@
 FROM debian:10.2
 
+ARG NGINX_VERSION=1.16.1
+
 # Install dependencies
 RUN apt-get update && apt-get install --assume-yes \
     wget \
@@ -10,10 +12,10 @@ RUN apt-get update && apt-get install --assume-yes \
 
 # Download and extract the nginx source code
 # https://nginx.org/en/docs/configure.html
-RUN wget "https://nginx.org/download/nginx-1.16.1.tar.gz" --output-document=- | \
+RUN wget "https://nginx.org/download/nginx-$NGINX_VERSION.tar.gz" --output-document=- | \
     tar --extract --gzip --file=- --directory /
 
-WORKDIR /nginx-1.16.1
+WORKDIR /nginx-$NGINX_VERSION
 
 # Compile and install nginx (dynamically linked)
 # https://nginx.org/en/docs/configure.html
@@ -76,7 +78,7 @@ RUN for group in $(awk -F':' '{print $1}' /etc/group | egrep --invert-match 'roo
 RUN cp --archive /etc/passwd /etc/group /build/etc/
 
 # Copy all dynamically linked libraries for nginx
-RUN for library in $(ldd /nginx-1.16.1/objs/nginx | grep '=> ' | awk '{print $3}') \
+RUN for library in $(ldd /nginx-$NGINX_VERSION/objs/nginx | grep '=> ' | awk '{print $3}') \
         "/lib64/ld-linux-x86-64.so.2" \
         # Needed to run nginx as different user
         "/lib/x86_64-linux-gnu/libnss_files.so.2" \
@@ -94,7 +96,7 @@ RUN for library in $(ldd /nginx-1.16.1/objs/nginx | grep '=> ' | awk '{print $3}
     done
 
 # Copy nginx binary and configuration files
-RUN cp --archive /nginx-1.16.1/objs/nginx /build/bin/nginx
+RUN cp --archive /nginx-$NGINX_VERSION/objs/nginx /build/bin/nginx
 COPY resources /build/etc/nginx/
 
 # Set correct permissions since nginx will run as user nobody:nogroup
@@ -103,9 +105,9 @@ RUN chown --recursive nobody:nogroup \
     /build/tmp/client_body_temp \
     /build/tmp/fastcgi_temp
 
+# Everything below this line will be the actual content of the image
 FROM scratch
 
-# Everything below this line will be the actual content of the image
 COPY --from=0 /build /
 
 USER nobody:nogroup
