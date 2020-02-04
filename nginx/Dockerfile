@@ -17,7 +17,7 @@ RUN wget "https://nginx.org/download/nginx-$NGINX_VERSION.tar.gz" --output-docum
 
 WORKDIR /nginx-$NGINX_VERSION
 
-# Compile and install nginx (dynamically linked)
+# Compile nginx (dynamically linked)
 # https://nginx.org/en/docs/configure.html
 RUN ./configure \
     --conf-path=/etc/nginx/nginx.conf \
@@ -99,7 +99,7 @@ RUN for library in $(ldd /nginx-$NGINX_VERSION/objs/nginx | grep '=> ' | awk '{p
 RUN cp --archive /nginx-$NGINX_VERSION/objs/nginx /build/bin/nginx
 COPY resources /build/etc/nginx/
 
-# Set correct permissions since nginx will run as user nobody:nogroup
+# Set correct permissions, since nginx will run as user nobody:nogroup
 RUN chown --recursive nobody:nogroup \
     /build/etc/nginx \
     /build/tmp/client_body_temp \
