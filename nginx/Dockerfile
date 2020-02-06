@@ -1,6 +1,6 @@
 FROM debian:10.2
 
-ARG NGINX_VERSION=1.16.1
+ARG NGINX_VERSION=1.17.8
 
 # Install dependencies
 RUN apt-get update && apt-get install --assume-yes \
@@ -11,7 +11,6 @@ RUN apt-get update && apt-get install --assume-yes \
     libpcre3-dev
 
 # Download and extract the nginx source code
-# https://nginx.org/en/docs/configure.html
 RUN wget "https://nginx.org/download/nginx-$NGINX_VERSION.tar.gz" --output-document=- | \
     tar --extract --gzip --file=- --directory /
 
